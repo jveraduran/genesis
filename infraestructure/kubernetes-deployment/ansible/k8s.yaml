@@ -1,0 +1,11 @@
+- hosts: "{{ lookup('env','CLUSTER_NAME') }}-{{ lookup('env','ENVIRONMENT') }}-{{ lookup('env','NAME_SUFFIX') }}-bastion"
+  become: no
+  remote_user: "ubuntu"
+
+# uncomment "create-cluster" role only if you are upgrading the cluster
+  roles:
+    - ssh
+    - create-cluster
+    - helm
+    - flux
+    - helm-operator

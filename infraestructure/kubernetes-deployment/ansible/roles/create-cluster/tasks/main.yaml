@@ -1,0 +1,101 @@
+- name: Copy template to bastion
+  copy:
+    src: cluster.tmpl
+    dest: "/home/{{ ansible_user }}/cluster.tmpl"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: 0644
+
+- name: Create cluster config file by consul-template
+  shell: "consul-template -template \"cluster.tmpl:cluster.yml\" -once -log-level debug -syslog"
+  environment:
+      CONSUL_HTTP_ADDR: "{{ lookup('env', 'CONSUL_HTTP_ADDR') }}"
+      CONSUL_HTTP_TOKEN: "{{ lookup('env', 'CONSUL_HTTP_TOKEN') }}"
+      ENVIRONMENT: "{{ lookup('env', 'ENVIRONMENT') }}"
+      REGION: "{{ lookup('env', 'REGION') }}"
+      CLUSTER_NAME: "{{ lookup('env', 'CLUSTER_NAME') }}"
+      NAME_SUFFIX: "{{ lookup('env', 'NAME_SUFFIX') }}"
+      AZURE_TENANT: "{{ lookup('env', 'AZURE_TENANT') }}"
+      AZURE_SUBSCRIPTION_ID: "{{ lookup('env', 'AZURE_SUBSCRIPTION_ID') }}"
+      AZURE_CLIENT_ID: "{{ lookup('env', 'AZURE_CLIENT_ID') }}"
+      AZURE_SECRET: "{{ lookup('env', 'AZURE_SECRET') }}"
+      CONSUL_HTTP_SSL: "{{ lookup('env', 'CONSUL_HTTP_SSL') }}"
+      KUBERNETES_VERSION: "{{ lookup('env', 'KUBERNETES_VERSION') }}"
+    
+- name: Execute rke for cluster creation
+  shell: "rke up"
+
+- name: Create .kube directory
+  file:
+    path: "/home/{{ ansible_user }}/.kube"
+    state: directory
+    mode: 0755
+
+- name: Move kubeconfig as default
+  shell: "mv ~/kube_config_cluster.yml ~/.kube/config"
+
+- name: Create consul secret
+  shell: "kubectl -n kube-system create secret generic consul-config --from-literal \"addr=${CONSUL_HTTP_ADDR}\" --from-literal \"token=${CONSUL_HTTP_TOKEN}\""
+  environment:
+        CONSUL_HTTP_ADDR: "{{ lookup('env', 'CONSUL_HTTP_ADDR') }}"
+        CONSUL_HTTP_TOKEN: "{{ lookup('env', 'CONSUL_HTTP_TOKEN') }}"
+
+- name: Create manifest for storage classes
+  copy:
+    dest: "/home/{{ ansible_user }}/azstorage-classes.yaml"
+    content: |
+      kind: StorageClass
+      apiVersion: storage.k8s.io/v1
+      metadata:
+        name: premium
+      provisioner: kubernetes.io/azure-disk
+      parameters:
+        storageaccounttype: Premium_LRS
+        kind: Managed
+      ---
+      kind: StorageClass
+      apiVersion: storage.k8s.io/v1
+      metadata:
+        name: standard
+      provisioner: kubernetes.io/azure-disk
+      parameters:
+        storageaccounttype: Standard_LRS
+        kind: Managed
+
+- name: Create storage classes resources
+  shell: "kubectl apply -f /home/{{ ansible_user }}/azstorage-classes.yaml"
+
+- name: Define default storage class
+  shell: "kubectl patch storageclass premium -p '{\"metadata\": {\"annotations\":{\"storageclass.kubernetes.io/is-default-class\":\"true\"}}}'"
+
+- name: Delete sealed secret secrets if exists
+  shell: kubectl -n kube-system get secret sealed-secrets-key && kubectl -n kube-system delete secret sealed-secrets-key || echo "secret doesn't exists"
+
+- name: Create secret for sealed secret
+  shell: kubectl -n kube-system create secret generic sealed-secrets-key --from-literal "tls.crt=$(consul kv get 10thman/${CLUSTER_NAME}/${REGION}/${ENVIRONMENT}/input/sealed-secret-certificate)" --from-literal "tls.key=$(consul kv get 10thman/${CLUSTER_NAME}/${REGION}/${ENVIRONMENT}/input/sealed-secret-key)"
+  environment:
+        CONSUL_HTTP_ADDR: "{{ lookup('env', 'CONSUL_HTTP_ADDR') }}"
+        CONSUL_HTTP_TOKEN: "{{ lookup('env', 'CONSUL_HTTP_TOKEN') }}"
+        CLUSTER_NAME: "{{ lookup('env', 'CLUSTER_NAME') }}"
+        ENVIRONMENT: "{{ lookup('env', 'ENVIRONMENT') }}"
+        REGION: "{{ lookup('env', 'REGION') }}"
+
+
+- name: Create custom resource definition for sealed secrets
+  shell: kubectl apply -f https://github.com/bitnami-labs/sealed-secrets/releases/download/${RELEASE}/sealedsecret-crd.yaml
+  environment:
+      RELEASE: "v0.7.0"
+
+- name: Create controller for sealed secrets
+  shell: kubectl apply -f https://github.com/bitnami-labs/sealed-secrets/releases/download/${RELEASE}/controller.yaml
+  environment:
+      RELEASE: "v0.7.0"
+
+- name: Clean up working files
+  file:
+    path: "{{ item }}"
+    state: absent
+  with_items:
+    - cluster.tmpl
+    - cluster.yml
+    - azstorage-classes.yaml

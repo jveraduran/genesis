@@ -1,0 +1,5 @@
+secrets/* filter=git-crypt diff=git-crypt
+*.key filter=git-crypt diff=git-crypt
+init_tools.sh filter=git-crypt diff=git-crypt
+consul_backups/* filter=git-crypt diff=git-crypt
+ansible/* filter=git-crypt diff=git-crypt

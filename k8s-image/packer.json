@@ -1,0 +1,76 @@
+{
+  "variables": {
+    "subscription_id": "{{env `AZURE_SUBSCRIPTION_ID`}}",
+    "tenant_id": "{{env `AZURE_TENANT_ID`}}",
+    "client_id": "{{env `AZURE_CLIENT_ID`}}",
+    "client_secret": "{{env `AZURE_CLIENT_SECRET`}}",
+    "version": "{{env `IMAGE_VERSION`}}"
+  },
+  
+  "builders": [{
+    "type": "azure-arm",
+
+    "subscription_id": "{{user `subscription_id`}}",
+    "tenant_id": "{{user `tenant_id`}}",
+    "client_id": "{{user `client_id`}}",
+    "client_secret": "{{user `client_secret`}}",
+
+    "build_resource_group_name": "{{user `build_rg`}}",
+
+    "managed_image_name": "k8s",
+
+    "managed_image_resource_group_name": "{{user `image_rg`}}",
+
+
+    "os_type": "Linux",
+    "image_publisher": "Canonical",
+    "image_offer": "UbuntuServer",
+    "image_sku": "16.04-LTS",
+
+    "vm_size": "Standard_DS1_v2",
+    "ssh_username": "ubuntu",
+
+    "azure_tags": {
+      "applicationname": "Terraform-Labs"
+    }
+  }],
+  "provisioners": [{
+    "type": "shell",
+    "inline": [
+      "sudo apt update && sudo apt upgrade -y"
+    ]
+  },{
+    "type": "ansible",
+    "playbook_file": "./k8s-image/docker.yaml",
+    "user": "ubuntu"
+  }, {
+    "type": "ansible",
+    "playbook_file": "./k8s-image/k8s.yaml",
+    "user": "ubuntu"
+  }, {
+    "type": "shell",
+    "inline": [
+      "mkdir ~/ssh-conf"
+    ]
+  }, {
+    "type": "file",
+    "source": "{{template_dir}}/ssh/trusted-user-ca-keys.pem",
+    "destination": "~/ssh-conf/trusted-user-ca-keys.pem"
+  }, {
+    "type": "file",
+    "source": "{{template_dir}}/ssh/sshd_config",
+    "destination": "~/ssh-conf/sshd_config"
+  }, {
+    "type": "shell",
+    "inline": [
+      "sudo cp ~/ssh-conf/sshd_config /etc/ssh/",
+      "sudo cp ~/ssh-conf/trusted-user-ca-keys.pem /etc/ssh/",
+      "rm -rf ~/ssh-conf"
+    ]
+  },{
+    "type": "shell",
+    "inline": [
+      "sudo apt-get autoremove -y"
+    ]
+  }]
+}

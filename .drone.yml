@@ -1,0 +1,260 @@
+pipeline:
+
+  # resourcegroups_labs:
+  #   image: jmccann/drone-terraform:6.1-0.12.11
+  #   actions:
+  #     - plan
+  #     - apply
+  #   sensitive: true
+  #   root_dir: infraestructure/initial
+  #   init_options:
+  #     backend-config:
+  #       - "scheme=http"
+  #       - "path=azure-labs/initial/terraform/infrastructure/terraform-state"
+  #       - "datacenter=dc1"
+  #   vars:
+  #     consul_base_path: azure-labs/initial
+  #   secrets:
+  #     - source: consul_http_addr
+  #       target: CONSUL_HTTP_ADDR
+  #     - source: consul_http_token
+  #       target: CONSUL_HTTP_TOKEN
+  #     - source: azure_tenant
+  #       target: ARM_TENANT_ID
+  #     - source: azure_subscription
+  #       target: ARM_SUBSCRIPTION_ID
+  #     - source: azure_client
+  #       target: ARM_CLIENT_ID
+  #     - source: azure_secret
+  #       target: ARM_CLIENT_SECRET
+
+  # networking_labs:
+  #   image: jmccann/drone-terraform:6.1-0.12.11
+  #   actions:
+  #     - plan
+  #     - apply
+  #   sensitive: true
+  #   root_dir: infraestructure/networking
+  #   init_options:
+  #     backend-config:
+  #       - "scheme=http"
+  #       - "path=azure-labs/networking/terraform/infrastructure/terraform-state"
+  #       - "datacenter=dc1"
+  #   vars:
+  #     consul_base_path: azure-labs/networking
+  #   secrets:
+  #     - source: consul_http_addr
+  #       target: CONSUL_HTTP_ADDR
+  #     - source: consul_http_token
+  #       target: CONSUL_HTTP_TOKEN
+  #     - source: azure_tenant
+  #       target: ARM_TENANT_ID
+  #     - source: azure_subscription
+  #       target: ARM_SUBSCRIPTION_ID
+  #     - source: azure_client
+  #       target: ARM_CLIENT_ID
+  #     - source: azure_secret
+  #       target: ARM_CLIENT_SECRET
+  
+  # servers_labs:
+  #   image: jmccann/drone-terraform:6.1-0.12.11
+  #   actions:
+  #     - plan
+  #     - apply
+  #   sensitive: true
+  #   root_dir: infraestructure/servers
+  #   init_options:
+  #     backend-config:
+  #       - "scheme=http"
+  #       - "path=azure-labs/servers/terraform/infrastructure/terraform-state"
+  #       - "datacenter=dc1"
+  #   vars:
+  #     consul_base_path: azure-labs/servers
+  #     consul_remote_path: azure-labs/networking
+  #   secrets:
+  #     - source: consul_http_addr
+  #       target: CONSUL_HTTP_ADDR
+  #     - source: consul_http_token
+  #       target: CONSUL_HTTP_TOKEN
+  #     - source: azure_tenant
+  #       target: ARM_TENANT_ID
+  #     - source: azure_subscription
+  #       target: ARM_SUBSCRIPTION_ID
+  #     - source: azure_client
+  #       target: ARM_CLIENT_ID
+  #     - source: azure_secret
+  #       target: ARM_CLIENT_SECRET
+  
+  # packer-bastion-eastus2:
+  #   image: drone-packer:latest
+  #   group: images
+  #   pull: true
+  #   actions:
+  #     - validate
+  #     - build
+  #   environment:
+  #     - BASTION_IMAGE_VERSION=1.0
+  #   vars:
+  #     build_rg: cl-global-eastus2-labs
+  #     image_rg: cl-global-eastus2-labs
+  #   template: bastion-image/packer.json
+  #   secrets:
+  #     - source: azure_tenant
+  #       target: AZURE_TENANT_ID
+  #     - source: azure_subscription
+  #       target: AZURE_SUBSCRIPTION_ID
+  #     - source: azure_client
+  #       target: AZURE_CLIENT_ID
+  #     - source: azure_secret
+  #       target: AZURE_CLIENT_SECRET
+
+  # packer-bastion-westus2:
+  #   image: drone-packer:latest
+  #   group: images
+  #   pull: true
+  #   actions:
+  #     - validate
+  #     - build
+  #   environment:
+  #     - BASTION_IMAGE_VERSION=1.0
+  #   vars:
+  #     build_rg: cl-global-westus2-labs
+  #     image_rg: cl-global-westus2-labs
+  #   template: bastion-image/packer.json
+  #   secrets:
+  #     - source: azure_tenant
+  #       target: AZURE_TENANT_ID
+  #     - source: azure_subscription
+  #       target: AZURE_SUBSCRIPTION_ID
+  #     - source: azure_client
+  #       target: AZURE_CLIENT_ID
+  #     - source: azure_secret
+  #       target: AZURE_CLIENT_SECRET
+
+  # packer-k8s-eastus2:
+  #   image: drone-packer:latest
+  #   group: images
+  #   pull: true
+  #   actions:
+  #     - validate
+  #     - build
+  #   environment:
+  #     - IMAGE_VERSION=1.0
+  #   vars:
+  #     build_rg: cl-global-eastus2-labs
+  #     image_rg: cl-global-eastus2-labs
+  #   template: k8s-image/packer.json
+  #   secrets:
+  #     - source: azure_tenant
+  #       target: AZURE_TENANT_ID
+  #     - source: azure_subscription
+  #       target: AZURE_SUBSCRIPTION_ID
+  #     - source: azure_client
+  #       target: AZURE_CLIENT_ID
+  #     - source: azure_secret
+  #       target: AZURE_CLIENT_SECRET
+
+  # packer-k8s-westus2:
+  #   image: drone-packer:latest
+  #   group: images
+  #   pull: true
+  #   actions:
+  #     - validate
+  #     - build
+  #   environment:
+  #     - IMAGE_VERSION=1.0
+  #   vars:
+  #     build_rg: cl-global-westus2-labs
+  #     image_rg: cl-global-westus2-labs
+  #   template: k8s-image/packer.json
+  #   secrets:
+  #     - source: azure_tenant
+  #       target: AZURE_TENANT_ID
+  #     - source: azure_subscription
+  #       target: AZURE_SUBSCRIPTION_ID
+  #     - source: azure_client
+  #       target: AZURE_CLIENT_ID
+  #     - source: azure_secret
+  #       target: AZURE_CLIENT_SECRET
+
+  # ssh_key_labs:
+  #   group: ssh_keygen
+  #   pull: true
+  #   image: drone-ssh-keygen:latest
+  #   vault_ssh_secret_path: secret/kubernetes-deployment/labs/ssh 
+  #   secrets:
+  #     - source: vault_token
+  #       target: VAULT_TOKEN
+  #     - source: vault_addr
+  #       target: VAULT_ADDR
+
+  # kubernetes_labs:
+  #   image: jmccann/drone-terraform:6.1-0.12.11
+  #   actions:
+  #     - plan
+  #     - apply
+  #   sensitive: true
+  #   root_dir: infraestructure/kubernetes-deployment/terraform
+  #   init_options:
+  #     backend-config:
+  #       - "scheme=http"
+  #       - "path=azure-labs/kubernetes-deployment/terraform/infrastructure/terraform-state"
+  #       - "datacenter=dc1"
+  #   vars:
+  #     consul_base_path: azure-labs/kubernetes-deployment
+  #     consul_remote_path: azure-labs/networking
+  #     vault_base_path: secret/kubernetes-deployment/labs/ssh
+  #   secrets:
+  #     - source: consul_http_addr
+  #       target: CONSUL_HTTP_ADDR
+  #     - source: azure_tenant
+  #       target: ARM_TENANT_ID
+  #     - source: azure_subscription
+  #       target: ARM_SUBSCRIPTION_ID
+  #     - source: azure_client
+  #       target: ARM_CLIENT_ID
+  #     - source: azure_secret
+  #       target: ARM_CLIENT_SECRET
+  #     - source: vault_token
+  #       target: VAULT_TOKEN
+  #     - source: vault_addr
+  #       target: VAULT_ADDR
+    
+  import_consul_keys_labs:
+    group: import_consul_keys
+    image: drone-consul:latest
+    prefix: azure-labs/kubernetes-deployment
+    excludes: terraform-state
+    consul_port: 8500
+    filename: .env_file_labs
+    secrets:
+    - source: consul_addr
+      target: CONSUL_ADDR
+
+  # cloudfare_labs:
+  #   image: jmccann/drone-terraform:6.1-0.12.11
+  #   actions:
+  #     - plan
+  #     - apply
+  #   sensitive: true
+  #   root_dir: infraestructure/cloudfare
+  #   init_options:
+  #     backend-config:
+  #       - "scheme=http"
+  #       - "path=azure-labs/cloudfare/terraform/infrastructure/terraform-state"
+  #       - "datacenter=dc1"
+  #   vars:
+  #     consul_base_path: azure-labs/cloudfare
+  #   secrets:
+  #     - source: consul_http_addr
+  #       target: CONSUL_HTTP_ADDR
+  #     - source: consul_http_token
+  #       target: CONSUL_HTTP_TOKEN
+  #     - source: azure_tenant
+  #       target: ARM_TENANT_ID
+  #     - source: azure_subscription
+  #       target: ARM_SUBSCRIPTION_ID
+  #     - source: azure_client
+  #       target: ARM_CLIENT_ID
+  #     - source: azure_secret
+  #       target: ARM_CLIENT_SECRET

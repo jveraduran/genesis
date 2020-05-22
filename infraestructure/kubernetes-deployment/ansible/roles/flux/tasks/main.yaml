@@ -1,0 +1,156 @@
+- name: Create flux namespace
+  shell: kubectl get namespace flux || kubectl create namespace flux
+    
+- name: Copy flux service account
+  copy:
+    dest: "/home/{{ ansible_user }}/flux-service-account.yaml"
+    content: |
+      ---
+      apiVersion: v1
+      kind: ServiceAccount
+      metadata:
+        labels:
+          name: flux
+        name: flux
+        namespace: flux
+      ---
+      apiVersion: rbac.authorization.k8s.io/v1beta1
+      kind: ClusterRole
+      metadata:
+        labels:
+          name: flux
+        name: flux
+      rules:
+        - apiGroups: ['*']
+          resources: ['*']
+          verbs: ['*']
+        - nonResourceURLs: ['*']
+          verbs: ['*']
+      ---
+      apiVersion: rbac.authorization.k8s.io/v1beta1
+      kind: ClusterRoleBinding
+      metadata:
+        labels:
+          name: flux
+        name: flux
+      roleRef:
+        apiGroup: rbac.authorization.k8s.io
+        kind: ClusterRole
+        name: flux
+      subjects:
+        - kind: ServiceAccount
+          name: flux
+          namespace: flux
+    
+- name: Delete flux secrets if exists
+  shell: "kubectl -n flux get secret flux-git-deploy && kubectl -n flux delete secret flux-git-deploy || echo \"secret doesn't exists\""
+
+- name: Create flux secrets   
+  shell: "kubectl -n flux create secret generic flux-git-deploy --from-literal \"identity=$(consul kv get 10thman/${CLUSTER_NAME}/${REGION}/${ENVIRONMENT}/input/ssh-deploy-private-key)\" --from-literal \"identity.pub=$(consul kv get 10thman/${CLUSTER_NAME}/${REGION}/${ENVIRONMENT}/input/ssh-deploy-public-key)\""
+  environment:
+        CONSUL_HTTP_ADDR: "{{ lookup('env', 'CONSUL_HTTP_ADDR') }}"
+        CONSUL_HTTP_TOKEN: "{{ lookup('env', 'CONSUL_HTTP_TOKEN') }}"
+        CLUSTER_NAME: "{{ lookup('env', 'CLUSTER_NAME') }}"
+        ENVIRONMENT: "{{ lookup('env', 'ENVIRONMENT') }}"
+        REGION: "{{ lookup('env', 'REGION') }}"
+ 
+- name: Create flux service account
+  shell: "kubectl apply -f /home/{{ ansible_user }}/flux-service-account.yaml"
+
+- name: Copy flux deployment
+  copy:
+    dest: "/home/{{ ansible_user }}/flux-deployment.yaml"
+    content: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: memcached
+        namespace: flux
+      spec:
+        replicas: 1
+        selector:
+          matchLabels:
+            name: memcached
+        template:
+          metadata:
+            labels:
+              name: memcached
+          spec:
+            containers:
+            - name: memcached
+              image: memcached:1.5.17
+              imagePullPolicy: IfNotPresent
+              args:
+              - -m 64
+              - -p 11211
+              ports:
+              - name: clients
+                containerPort: 11211
+      ---
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: memcached
+        namespace: flux
+      spec:
+        clusterIP: None
+        ports:
+          - name: memcached
+            port: 11211
+        selector:
+          name: memcached
+      ---
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: flux
+        namespace: flux
+      spec:
+        replicas: 1
+        selector:
+          matchLabels:
+            name: flux
+        strategy:
+          type: Recreate
+        template:
+          metadata:
+            annotations:
+              prometheus.io.port: "3031"
+            labels:
+              name: flux
+          spec:
+            serviceAccount: flux
+            volumes:
+            - name: git-key
+              secret:
+                secretName: flux-git-deploy
+                defaultMode: 0400
+            - name: git-keygen
+              emptyDir:
+                medium: Memory
+            containers:
+            - name: flux
+              image: weaveworks/flux:1.14.2
+              imagePullPolicy: IfNotPresent
+              ports:
+              - containerPort: 3030
+              volumeMounts:
+              - name: git-key
+                mountPath: /etc/fluxd/ssh
+                readOnly: true
+              - name: git-keygen
+                mountPath: /var/fluxd/keygen
+              args:
+              - --ssh-keygen-dir=/var/fluxd/keygen
+              - --git-url=git@bitbucket.org:walmartretail/k8s-front-deployment_retail.git
+              - --git-branch=master
+              - --listen-metrics=:3031
+              - --git-path=deployments/{{ lookup('env','ENVIRONMENT') }}/{{ lookup('env','REGION') }}
+              - --sync-garbage-collection
+              - --git-ci-skip=true
+              - --git-ci-skip-message=[CI SKIP]
+
+
+- name: Create flux deployment
+  shell: "kubectl apply -f /home/{{ ansible_user }}/flux-deployment.yaml"
+

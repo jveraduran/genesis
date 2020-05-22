@@ -1,0 +1,28 @@
+- hosts: "{{ lookup('env','CLUSTER_NAME') }}-{{ lookup('env','ENVIRONMENT') }}-{{ lookup('env','NAME_SUFFIX') }}-bastion"
+  become: yes
+  remote_user: "ubuntu"
+
+  tasks:
+    - name: Renew Vault token
+      shell: "vault token renew > /dev/null"
+      environment:
+        VAULT_TOKEN: "{{ lookup('env', 'VAULT_TOKEN') }}"
+        VAULT_ADDR: "{{ lookup('env', 'VAULT_ADDR') }}"
+
+    - name: Remove SSH private key
+      shell: "sudo rm -f ~/.ssh/id_rsa"
+
+    - name: Get SSH private key from Vault
+      shell: "vault kv get -format=json secret/kv/10thman/k8s-front-retail/eastus2/${ENVIRONMENT}/ssh | jq -r .data.id_rsa > ~/.ssh/id_rsa"
+      environment:
+        VAULT_TOKEN: "{{ lookup('env', 'VAULT_TOKEN') }}"
+        VAULT_ADDR: "{{ lookup('env', 'VAULT_ADDR') }}"
+        CLUSTER_NAME: "{{ lookup('env', 'CLUSTER_NAME') }}"
+        ENVIRONMENT: "{{ lookup('env', 'ENVIRONMENT') }}"
+        REGION: "{{ lookup('env', 'REGION') }}"
+
+    - name: Set correct permissions on SSH private key
+      shell: "chmod 400 ~/.ssh/id_rsa"
+
+    - name: Disable strict host checking
+      shell: "echo \"Host *\" > ~/.ssh/config && echo \"  StrictHostKeyChecking no\" >> ~/.ssh/config"

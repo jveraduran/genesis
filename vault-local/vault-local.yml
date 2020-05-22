@@ -1,0 +1,17 @@
+version: '3'
+
+services:
+  vault:
+    image: vault
+    container_name: vault
+    ports:
+      - "8200:8200"
+    restart: always
+    cap_add:
+      - IPC_LOCK
+    environment:
+      - VAULT_DEV_ROOT_TOKEN_ID=${VAULT_TOKEN}
+networks:
+  default:
+    external:
+      name: genesis-dockernet
