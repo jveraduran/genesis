@@ -20,7 +20,7 @@
       "winston": "^2.4.0"
     },
     "devDependencies": {
-      "eslint": "^3.17.1",
+      "eslint": "^7.1.0",
       "eslint-config-loopback": "^8.0.0",
       "pkg": "^4.2.5"
     }
